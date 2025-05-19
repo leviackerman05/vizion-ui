@@ -2,7 +2,7 @@
 import { SIDEBAR } from "@/constants/strings";
 import { ChatHistory } from "@/types";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Settings, SignOut, User } from "lucide-react";
+import { MessageSquare, Settings, LogOut, User } from "lucide-react";
 import Logo from "./Logo";
 import ChatList from "./ChatList";
 
@@ -50,7 +50,7 @@ const Sidebar = ({ chats, onNewChat, onSelectChat, selectedChatId }: SidebarProp
           variant="ghost" 
           className="w-full flex items-center gap-2 justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
         >
-          <SignOut size={16} />
+          <LogOut size={16} />
           <span>{SIDEBAR.SIGN_OUT}</span>
         </Button>
       </div>
