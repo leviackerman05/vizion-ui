@@ -1,4 +1,3 @@
-
 export type ChatMessage = {
   id: string;
   sender: "user" | "ai";
@@ -10,7 +9,7 @@ export type ChatHistory = {
   id: string;
   title: string;
   lastMessage: string;
-  timestamp: Date;
+  timestamp?: Date;
 };
 
 export type VideoMetadata = {
