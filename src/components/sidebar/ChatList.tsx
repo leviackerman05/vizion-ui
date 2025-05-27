@@ -65,7 +65,7 @@ const ChatList = ({ chats, onSelectChat, selectedChatId }: ChatListProps) => {
   );
 
   return (
-    <div className="flex-1 overflow-y-auto px-2 py-4">
+    <div className="flex-1 overflow-y-auto px-2 py-4 scrollbar-hide">
       {todayChats.length > 0 && (
         <ChatGroup title={SIDEBAR.TODAY} items={todayChats} />
       )}
