@@ -23,3 +23,12 @@ export const sendUserPrompt = async (
 
   return res.json();
 };
+
+export const fetchVideoFromLatestCode = async (
+  userId: string,
+  chatId: string
+) => {
+  const res = await fetch(`${BASE_URL}/video/${userId}/${chatId}`);
+  if (!res.ok) throw new Error("Failed to fetch regenerated video");
+  return res.json();
+};

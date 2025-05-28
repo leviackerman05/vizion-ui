@@ -22,8 +22,27 @@ const Sidebar = ({
   const navigate = useNavigate();
 
   const handleLogout = async () => {
+    const uid = localStorage.getItem("uid");
+    const sessionId = localStorage.getItem("session_id");
+
+    if (uid && sessionId) {
+      try {
+        await fetch("http://localhost:8000/logout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-uid": uid,
+            "x-session-id": sessionId,
+          },
+        });
+      } catch (err) {
+        console.error("Logout request failed:", err);
+      }
+    }
+
     localStorage.removeItem("token");
     localStorage.removeItem("uid");
+    localStorage.removeItem("session_id");
     navigate("/login");
   };
 

@@ -10,12 +10,13 @@ import {
   fetchUserChats,
   fetchChatMessages,
   sendUserPrompt,
+  fetchVideoFromLatestCode,
 } from "@/lib/api/chats";
 
 const generatingResponses = [
   "Sure, working on it...",
   "Alright, let me get that ready for you.",
-  "Okay, generating your animation now...",
+  "Generating your animation now...",
   "One moment while I bring that to life...",
 ];
 
@@ -82,7 +83,8 @@ const Index = () => {
 
     setMessages((prev) => [...prev, userMsg]);
     setVideoState("generating");
-    const aiLoading = createAiMessage("Generating your video...");
+
+    const aiLoading = createAiMessage(getRandomFiller("generating"));
     setTimeout(() => setMessages((prev) => [...prev, aiLoading]), 300);
 
     try {
@@ -96,6 +98,7 @@ const Index = () => {
         resolution: "unknown",
         size: "unknown",
       });
+
       const aiDone = createAiMessage(getRandomFiller("done"));
       setMessages((prev) => [...prev, aiDone]);
     } catch (err) {
@@ -111,31 +114,24 @@ const Index = () => {
   const handleSelectChat = async (chatId: string) => {
     setSelectedChatId(chatId);
     setExpanded(true);
+    setVideoState("generating");
+    setMessages([]);
+
     try {
       const data = await fetchChatMessages(USER_ID, chatId);
       const loadedMessages: ChatMessage[] = data.messages.map((m: any) => ({
         id: crypto.randomUUID(),
         text: typeof m === "string" ? m : m.message,
         sender: "user",
+        timestamp: m.timestamp ? new Date(m.timestamp) : undefined,
       }));
 
-      const interleaved: ChatMessage[] = [];
-      loadedMessages.forEach((m) => {
-        interleaved.push(m);
-        interleaved.push({
-          id: crypto.randomUUID(),
-          text: getRandomFiller("generating"),
-          sender: "ai",
-          timestamp: undefined,
-        });
-        interleaved.push({
-          id: crypto.randomUUID(),
-          text: getRandomFiller("done"),
-          sender: "ai",
-          timestamp: undefined,
-        });
-      });
-      setMessages(interleaved);
+      const aiGenerating = createAiMessage(getRandomFiller("generating"));
+      setMessages([...loadedMessages, aiGenerating]);
+
+      const videoResp = await fetchVideoFromLatestCode(USER_ID, chatId);
+      const videoUrl = videoResp.videoUrl + `?t=${Date.now()}`;
+      setVideoSrc(videoUrl);
       setVideoState("ready");
       setVideoMetadata({
         duration: "unknown",
@@ -143,8 +139,16 @@ const Index = () => {
         resolution: "unknown",
         size: "unknown",
       });
+
+      const aiDone = createAiMessage(getRandomFiller("done"));
+      setMessages((prev) => [...prev, aiDone]);
     } catch (err) {
-      console.error("Failed to load chat:", err);
+      console.error("Failed to load chat or video:", err);
+      setVideoState("error");
+      setMessages((prev) => [
+        ...prev,
+        createAiMessage("❌ Failed to generate video."),
+      ]);
     }
   };
 

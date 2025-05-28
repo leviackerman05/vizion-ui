@@ -22,28 +22,35 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      if (!res.ok) throw new Error("Invalid credentials");
       const data = await res.json();
+
+      if (!res.ok) {
+        setError("Invalid email or password");
+        toast(
+          <div className="flex flex-col">
+            <span className="font-medium">Login failed</span>
+            <span className="text-sm text-gray-700">
+              Please check your credentials
+            </span>
+          </div>,
+          {
+            style: { backgroundColor: "#eae4e2", color: "black" },
+          }
+        );
+        return;
+      }
 
       localStorage.setItem("token", data.idToken);
       localStorage.setItem("uid", data.uid);
-      toast(
-        <div className="flex flex-col">
-          <span className="font-medium">Login successful!</span>
-        </div>,
-        {
-          style: { backgroundColor: "#16a34a", color: "white" },
-        }
-      );
+      localStorage.setItem("session_id", data.sessionId);
+
       navigate("/");
     } catch {
-      setError("Invalid email or password");
+      setError("Something went wrong");
       toast(
         <div className="flex flex-col">
           <span className="font-medium">Login failed</span>
-          <span className="text-sm text-gray-700">
-            Please check your credentials
-          </span>
+          <span className="text-sm text-gray-700">Please try again later.</span>
         </div>,
         {
           style: { backgroundColor: "#eae4e2", color: "black" },
