@@ -43,7 +43,7 @@ const Index = () => {
   );
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
 
-  const USER_ID = "user_123";
+  const USER_ID = localStorage.getItem("uid");
 
   useEffect(() => {
     const loadChats = async () => {
