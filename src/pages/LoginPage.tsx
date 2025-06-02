@@ -42,7 +42,7 @@ export default function LoginPage() {
 
       localStorage.setItem("token", data.idToken);
       localStorage.setItem("uid", data.uid);
-      localStorage.setItem("session_id", data.sessionId);
+      localStorage.setItem("active_plan", data.active_plan ?? "");
 
       navigate("/");
     } catch {
