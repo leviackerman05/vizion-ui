@@ -90,26 +90,32 @@
     @apply border-border;
   }
 
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
   body {
-    @apply bg-background text-foreground overflow-hidden;
+    @apply bg-background text-foreground overflow-hidden antialiased;
   }
 }
 
 @layer utilities {
-  .rainbow-border {
-    @apply border-2 border-transparent bg-clip-padding;
-    background-image: linear-gradient(white, white), 
-      linear-gradient(90deg, #ff0080, #ff8c00, #ffee00, #00ff8c, #00bfff, #8000ff, #ff0080);
-    background-origin: border-box;
-    background-clip: padding-box, border-box;
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) transparent;
   }
-  
-  .rainbow-border:focus-within {
-    @apply animate-gradient-x;
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 2px;
   }
 
-  .dark .rainbow-border {
-    background-image: linear-gradient(hsl(var(--background)), hsl(var(--background))), 
-      linear-gradient(90deg, #ff0080, #ff8c00, #ffee00, #00ff8c, #00bfff, #8000ff, #ff0080);
+  .prose pre {
+    @apply bg-muted/50 rounded-md p-3 overflow-x-auto text-xs;
+  }
+  .prose code {
+    @apply bg-muted/50 px-1 py-0.5 rounded text-xs;
   }
 }

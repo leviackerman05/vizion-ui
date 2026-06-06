@@ -1,8 +1,8 @@
 
 export const APP = {
-  NAME: "VideoGPT",
-  TAGLINE: "Transform text into video with AI",
-  COPYRIGHT: "© 2025 VideoGPT. All rights reserved."
+  NAME: "Vizion",
+  TAGLINE: "Text to video, powered by AI",
+  COPYRIGHT: "© 2025 Vizion. All rights reserved.",
 };
 
 export const SIDEBAR = {
@@ -10,37 +10,47 @@ export const SIDEBAR = {
   TODAY: "Today",
   YESTERDAY: "Yesterday",
   PREVIOUS: "Previous",
-  SIGN_OUT: "Sign Out"
+  SIGN_OUT: "Sign Out",
+  SEARCH: "Search chats...",
 };
 
 export const INPUT = {
-  PLACEHOLDER: "Describe your video...",
-  SUBMIT: "Generate Video",
-  LISTENING: "Listening...",
-  SEND: "Send"
+  PLACEHOLDER: "Describe the animation you want to create...",
+  SUBMIT: "Generate",
+  SEND: "Send",
+  STOP: "Stop",
 };
 
 export const VIDEO = {
   GENERATING: "Generating video...",
-  PREVIEW: "Video Preview",
+  PREVIEW: "Preview",
+  CODE: "Code",
+  DOWNLOAD: "Download",
+  FULLSCREEN: "Fullscreen",
+  ERROR: "Video generation failed",
   METADATA: {
     DURATION: "Duration",
     RESOLUTION: "Resolution",
     FORMAT: "Format",
-    SIZE: "Size"
-  }
+    SIZE: "Size",
+  },
 };
 
 export const CHAT = {
-  WELCOME: "Welcome to VideoGPT! Describe the video you want to create",
-  EMPTY: "No messages yet",
+  WELCOME: "What would you like to animate?",
+  EMPTY: "Start a conversation to generate your first video",
   USER_PREFIX: "You",
-  AI_PREFIX: "VideoGPT"
+  AI_PREFIX: "Vizion",
 };
 
 export const HEADER = {
-  NEW_PROJECT: "New Project",
-  SAVE: "Save",
   EXPORT: "Export",
-  SETTINGS: "Settings"
+  SETTINGS: "Settings",
+};
+
+export const PLANS = {
+  FREE: "Free",
+  PRO: "Pro",
+  UPGRADE: "Upgrade to Pro",
+  REMAINING: "videos remaining today",
 };

@@ -1,93 +1,143 @@
-import { SIDEBAR } from "@/constants/strings";
-import { ChatHistory } from "@/types";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Plus,
+  Settings,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Settings, LogOut, User } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import Logo from "./Logo";
 import ChatList from "./ChatList";
-import { useNavigate } from "react-router-dom";
+import { SIDEBAR, PLANS } from "@/constants/strings";
+import { ChatHistory } from "@/types";
+import { deleteChat } from "@/lib/api/chats";
 
 type SidebarProps = {
   chats: ChatHistory[];
   onNewChat: () => void;
   onSelectChat: (id: string) => void;
+  onDeleteChat?: (id: string) => void;
   selectedChatId: string | null;
+  plan?: string;
+  remaining?: number | null;
 };
 
 const Sidebar = ({
   chats,
   onNewChat,
   onSelectChat,
+  onDeleteChat,
   selectedChatId,
+  plan = "free",
+  remaining,
 }: SidebarProps) => {
+  const [collapsed, setCollapsed] = useState(false);
+  const [search, setSearch] = useState("");
   const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    const uid = localStorage.getItem("uid");
-    const sessionId = localStorage.getItem("session_id");
+  const filtered = chats.filter((c) =>
+    c.title.toLowerCase().includes(search.toLowerCase())
+  );
 
-    if (uid && sessionId) {
-      try {
-        await fetch("http://localhost:8000/logout", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-uid": uid,
-            "x-session-id": sessionId,
-          },
-        });
-      } catch (err) {
-        console.error("Logout request failed:", err);
-      }
-    }
-
-    localStorage.removeItem("token");
-    localStorage.removeItem("uid");
-    localStorage.removeItem("session_id");
+  const handleLogout = () => {
+    localStorage.clear();
     navigate("/login");
   };
 
-  return (
-    <aside className="w-72 h-screen bg-sidebar flex flex-col border-r border-sidebar-border">
-      <Logo />
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await deleteChat(id);
+      onDeleteChat?.(id);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-      <div className="px-4 py-2">
-        <Button
-          variant="secondary"
-          className="w-full flex items-center gap-2 bg-sidebar-accent text-sidebar-foreground"
-          onClick={onNewChat}
-        >
-          <MessageSquare size={16} />
-          <span>{SIDEBAR.NEW_CHAT}</span>
+  if (collapsed) {
+    return (
+      <div className="w-12 bg-sidebar border-r border-sidebar-border flex flex-col items-center py-3 gap-2">
+        <Button variant="ghost" size="icon" onClick={() => setCollapsed(false)}>
+          <ChevronRight size={16} />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={onNewChat}>
+          <Plus size={16} />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col shrink-0">
+      <div className="p-3 flex items-center justify-between border-b border-sidebar-border">
+        <Logo />
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCollapsed(true)}>
+          <ChevronLeft size={14} />
         </Button>
       </div>
 
-      <ChatList
-        chats={chats}
-        onSelectChat={onSelectChat}
-        selectedChatId={selectedChatId}
-      />
+      <div className="p-3">
+        <Button
+          onClick={onNewChat}
+          className="w-full justify-start gap-2 bg-sidebar-accent hover:bg-sidebar-accent/80 text-sidebar-foreground"
+          variant="ghost"
+        >
+          <Plus size={16} />
+          {SIDEBAR.NEW_CHAT}
+        </Button>
+      </div>
 
-      <div className="p-4 mt-auto border-t border-sidebar-border">
-        <div className="flex items-center gap-3 text-sidebar-foreground mb-4">
-          <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center">
-            <User size={16} />
+      <div className="px-3 pb-2">
+        <div className="relative">
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={SIDEBAR.SEARCH}
+            className="pl-8 h-8 text-xs bg-sidebar-accent/50 border-sidebar-border"
+          />
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-2">
+        <ChatList
+          chats={filtered}
+          onSelectChat={onSelectChat}
+          selectedChatId={selectedChatId}
+          onDeleteChat={handleDelete}
+        />
+      </div>
+
+      <div className="p-3 border-t border-sidebar-border space-y-2">
+        {plan === "free" && remaining !== null && remaining !== undefined && (
+          <div className="text-xs text-muted-foreground px-1">
+            {remaining} {PLANS.REMAINING}
           </div>
-          <div className="text-sm font-medium">User Account</div>
-          <Button variant="ghost" size="icon" className="ml-auto">
-            <Settings size={16} />
+        )}
+        {plan === "pro" && (
+          <div className="text-xs text-primary px-1 font-medium">Pro plan active</div>
+        )}
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex-1 justify-start gap-2 text-xs"
+            onClick={() => navigate("/profile")}
+          >
+            <Settings size={14} />
+            {SIDEBAR.SIGN_OUT === "Sign Out" ? "Account" : "Settings"}
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleLogout}>
+            <LogOut size={14} />
           </Button>
         </div>
-
-        <Button
-          variant="ghost"
-          className="w-full flex items-center gap-2 justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
-          onClick={handleLogout}
-        >
-          <LogOut size={16} />
-          <span>{SIDEBAR.SIGN_OUT}</span>
-        </Button>
       </div>
-    </aside>
+    </div>
   );
 };
 

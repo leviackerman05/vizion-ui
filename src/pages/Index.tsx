@@ -1,36 +1,19 @@
-import { useEffect, useState } from "react";
-import { ChatHistory, ChatMessage, VideoMetadata, VideoState } from "@/types";
-import { createUserMessage, createAiMessage } from "@/utils";
+import { useEffect, useRef, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
+import { toast } from "sonner";
 import Header from "@/components/header/Header";
 import Sidebar from "@/components/sidebar/Sidebar";
 import ChatPanel from "@/components/chat/ChatPanel";
 import VideoPanel from "@/components/video/VideoPanel";
-import { v4 as uuidv4 } from "uuid";
+import { ChatHistory, ChatMessage, VideoMetadata, VideoState } from "@/types";
+import { createUserMessage, createAiMessage } from "@/utils";
 import {
   fetchUserChats,
   fetchChatMessages,
-  sendUserPrompt,
-  fetchVideoFromLatestCode,
+  sendUserPromptStream,
+  toVideoUrl,
 } from "@/lib/api/chats";
-
-const generatingResponses = [
-  "Sure, working on it...",
-  "Alright, let me get that ready for you.",
-  "Generating your animation now...",
-  "One moment while I bring that to life...",
-];
-
-const doneResponses = [
-  "Here’s the animation!",
-  "Done! Check out the result.",
-  "Your video is ready — have a look!",
-  "Hope you like how it turned out!",
-];
-
-function getRandomFiller(stage: "generating" | "done") {
-  const pool = stage === "generating" ? generatingResponses : doneResponses;
-  return pool[Math.floor(Math.random() * pool.length)];
-}
+import { fetchMe } from "@/lib/api/user";
 
 const Index = () => {
   const [expanded, setExpanded] = useState(false);
@@ -38,33 +21,47 @@ const Index = () => {
   const [chats, setChats] = useState<ChatHistory[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [videoState, setVideoState] = useState<VideoState>("idle");
-  const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(
-    null
-  );
+  const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null);
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
-
-  const USER_ID = localStorage.getItem("uid");
+  const [script, setScript] = useState<string>("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [plan, setPlan] = useState("free");
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    const loadChats = async () => {
-      try {
-        const data = await fetchUserChats(USER_ID);
-        const mapped: ChatHistory[] = data.map((item: any) => ({
-          id: item.chat_id,
-          title: item.name,
-          lastMessage: "Tap to view",
-          timestamp: new Date(item.createdAt),
-        }));
-        setChats(mapped);
-      } catch (err) {
-        console.error("Failed to fetch chats:", err);
-      }
-    };
-    loadChats();
+    fetchUserChats()
+      .then((data) => {
+        setChats(
+          data.map((item: { id: string; title: string; created_at?: string }) => ({
+            id: item.id,
+            title: item.title || "Untitled",
+            lastMessage: "",
+            timestamp: item.created_at ? new Date(item.created_at) : new Date(),
+          }))
+        );
+      })
+      .catch(console.error);
+
+    fetchMe()
+      .then((me) => {
+        setPlan(me.plan);
+        setRemaining(me.remaining);
+        localStorage.setItem("active_plan", me.plan);
+      })
+      .catch(console.error);
   }, []);
 
+  const handleStop = () => {
+    abortRef.current?.abort();
+    setIsGenerating(false);
+    setVideoState("idle");
+    setStatusMessage("");
+  };
+
   const handleSendMessage = async (text: string) => {
-    const userMsg = createUserMessage(text);
     let currentChatId = selectedChatId;
 
     if (!expanded || !selectedChatId) {
@@ -75,81 +72,111 @@ const Index = () => {
         lastMessage: text,
         timestamp: new Date(),
       };
-      setChats([newChat, ...chats]);
+      setChats((prev) => [newChat, ...prev]);
       setSelectedChatId(newChatId);
       setExpanded(true);
       currentChatId = newChatId;
     }
 
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => [...prev, createUserMessage(text)]);
     setVideoState("generating");
+    setIsGenerating(true);
+    setErrorMessage("");
+    setStatusMessage("Analyzing your prompt...");
+    setVideoSrc(null);
+    setScript("");
 
-    const aiLoading = createAiMessage(getRandomFiller("generating"));
-    setTimeout(() => setMessages((prev) => [...prev, aiLoading]), 300);
+    const aiMsg = createAiMessage("Generating your animation...", "generating");
+    setMessages((prev) => [...prev, aiMsg]);
+
+    abortRef.current = new AbortController();
 
     try {
-      const data = await sendUserPrompt(USER_ID, currentChatId, text);
-      const videoUrl = data.video_url + `?t=${Date.now()}`;
+      const result = await sendUserPromptStream(
+        currentChatId,
+        text,
+        (event) => {
+          setStatusMessage(event.message);
+          if (event.chat_id) setSelectedChatId(event.chat_id);
+        },
+        abortRef.current.signal
+      );
+
+      if (!result?.video_url) throw new Error("No video returned");
+
+      const videoUrl = `${toVideoUrl(result.video_url)}?t=${Date.now()}`;
       setVideoSrc(videoUrl);
-      setVideoState("ready");
-      setVideoMetadata({
+      setScript(result.script || "");
+      setVideoMetadata(result.metadata || {
         duration: "unknown",
-        format: "MP4",
         resolution: "unknown",
+        format: "MP4",
         size: "unknown",
       });
+      setVideoState("ready");
 
-      const aiDone = createAiMessage(getRandomFiller("done"));
-      setMessages((prev) => [...prev, aiDone]);
-    } catch (err) {
-      console.error(err);
-      setVideoState("error");
       setMessages((prev) => [
-        ...prev,
-        createAiMessage("❌ Failed to generate video."),
+        ...prev.filter((m) => m.id !== aiMsg.id),
+        createAiMessage("Here's your animation! Check the preview panel →"),
       ]);
+
+      fetchMe().then((me) => {
+        setPlan(me.plan);
+        setRemaining(me.remaining);
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Generation failed";
+      if (msg !== "The user aborted a request.") {
+        setVideoState("error");
+        setErrorMessage(msg);
+        setMessages((prev) => [
+          ...prev.filter((m) => m.id !== aiMsg.id),
+          createAiMessage(`❌ ${msg}`, "error"),
+        ]);
+        if (msg.includes("Upgrade") || msg.includes("limit")) {
+          toast.error(msg);
+        }
+      }
+    } finally {
+      setIsGenerating(false);
+      setStatusMessage("");
     }
   };
 
   const handleSelectChat = async (chatId: string) => {
     setSelectedChatId(chatId);
     setExpanded(true);
-    setVideoState("generating");
     setMessages([]);
+    setVideoState("idle");
+    setVideoSrc(null);
+    setScript("");
 
     try {
-      const data = await fetchChatMessages(USER_ID, chatId);
-      const loadedMessages: ChatMessage[] = data.messages.map((m: any) => ({
-        id: crypto.randomUUID(),
-        text: typeof m === "string" ? m : m.message,
-        sender: "user",
-        timestamp: m.timestamp ? new Date(m.timestamp) : undefined,
-      }));
+      const data = await fetchChatMessages(chatId);
+      const list = Array.isArray(data) ? data : [];
+      setMessages(
+        list.map((m: { role: string; content: string; created_at?: string; video_url?: string }) => ({
+          id: crypto.randomUUID(),
+          text: m.content,
+          sender: m.role === "assistant" ? "ai" : "user",
+          timestamp: m.created_at ? new Date(m.created_at) : new Date(),
+        }))
+      );
 
-      const aiGenerating = createAiMessage(getRandomFiller("generating"));
-      setMessages([...loadedMessages, aiGenerating]);
-
-      const videoResp = await fetchVideoFromLatestCode(USER_ID, chatId);
-      const videoUrl = videoResp.videoUrl + `?t=${Date.now()}`;
-      setVideoSrc(videoUrl);
-      setVideoState("ready");
-      setVideoMetadata({
-        duration: "unknown",
-        format: "MP4",
-        resolution: "unknown",
-        size: "unknown",
-      });
-
-      const aiDone = createAiMessage(getRandomFiller("done"));
-      setMessages((prev) => [...prev, aiDone]);
+      const withVideo = [...list].reverse().find((m: { video_url?: string }) => m.video_url);
+      if (withVideo?.video_url) {
+        setVideoSrc(`${toVideoUrl(withVideo.video_url)}?t=${Date.now()}`);
+        setVideoState("ready");
+        setVideoMetadata({ duration: "unknown", resolution: "unknown", format: "MP4", size: "unknown" });
+      }
     } catch (err) {
-      console.error("Failed to load chat or video:", err);
-      setVideoState("error");
-      setMessages((prev) => [
-        ...prev,
-        createAiMessage("❌ Failed to generate video."),
-      ]);
+      console.error(err);
     }
+  };
+
+  const handleDeleteChat = (chatId: string) => {
+    setChats((prev) => prev.filter((c) => c.id !== chatId));
+    if (selectedChatId === chatId) handleNewChat();
   };
 
   const handleNewChat = () => {
@@ -159,39 +186,46 @@ const Index = () => {
     setVideoState("idle");
     setVideoMetadata(null);
     setVideoSrc(null);
+    setScript("");
   };
 
   return (
-    <div className="h-screen flex flex-col">
-      <div className="flex-1 flex overflow-hidden scrollbar-hide">
+    <div className="h-screen flex flex-col bg-background">
+      <div className="flex-1 flex overflow-hidden">
         <Sidebar
           chats={chats}
           onNewChat={handleNewChat}
           onSelectChat={handleSelectChat}
+          onDeleteChat={handleDeleteChat}
           selectedChatId={selectedChatId}
+          plan={plan}
+          remaining={remaining}
         />
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
           <Header />
           <main className="flex-1 flex overflow-hidden">
             <div
-              className={`transition-all duration-500 ${
-                expanded ? "w-1/2 border-r border-border" : "w-full"
+              className={`transition-all duration-300 flex flex-col ${
+                expanded ? "w-1/2 border-r border-border/50" : "w-full"
               }`}
             >
               <ChatPanel
                 messages={messages}
                 onSendMessage={handleSendMessage}
+                onStop={handleStop}
                 expanded={expanded}
+                isGenerating={isGenerating}
+                statusMessage={statusMessage}
               />
             </div>
             {expanded && (
               <div className="w-1/2 animate-fade-in">
                 <VideoPanel
                   videoState={videoState}
-                  videoSrc={
-                    videoState === "ready" ? videoSrc ?? undefined : undefined
-                  }
+                  videoSrc={videoSrc ?? undefined}
+                  script={script}
                   metadata={videoMetadata}
+                  errorMessage={errorMessage}
                 />
               </div>
             )}

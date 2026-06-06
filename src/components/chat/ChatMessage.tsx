@@ -1,55 +1,72 @@
-import { CHAT } from "@/constants/strings";
-import { ChatMessage as ChatMessageType } from "@/types";
-import { formatDate } from "@/utils";
+import ReactMarkdown from "react-markdown";
+import { Copy, Check } from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 type ChatMessageProps = {
-  message: ChatMessageType;
+  message: {
+    id: string;
+    sender: "user" | "ai";
+    text: string;
+    timestamp: Date;
+    status?: "generating" | "done" | "error";
+  };
 };
 
 const ChatMessage = ({ message }: ChatMessageProps) => {
+  const [copied, setCopied] = useState(false);
   const isUser = message.sender === "user";
 
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(message.text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
-    <div
-      className={`flex mb-4 scrollbar-hide animate-fade-in ${
-        isUser ? "justify-end" : "justify-start"
-      }`}
-    >
-      <div className={`flex max-w-3/4 ${isUser ? "flex-row-reverse" : ""}`}>
-        <div
-          className={`flex items-center justify-center h-8 w-8 rounded-full shrink-0 ${
-            isUser ? "ml-2 bg-primary" : "mr-2 bg-secondary"
-          }`}
-        >
-          <span
-            className={`text-sm font-medium ${
-              isUser ? "text-primary-foreground" : "text-secondary-foreground"
-            }`}
-          >
-            {isUser ? "U" : "V"}
+    <div className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
+      <div
+        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${
+          isUser ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+        }`}
+      >
+        {isUser ? "U" : "V"}
+      </div>
+      <div className={`flex flex-col gap-1 max-w-[85%] ${isUser ? "items-end" : ""}`}>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {isUser ? "You" : "Vizion"}
           </span>
+          {message.status === "generating" && (
+            <span className="text-xs text-primary animate-pulse">generating...</span>
+          )}
         </div>
-
-        <div>
-          <div className="flex items-baseline gap-2 mb-1">
-            <span className="font-medium text-sm">
-              {isUser ? CHAT.USER_PREFIX : CHAT.AI_PREFIX}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {formatDate(message.timestamp)}
-            </span>
-          </div>
-
-          <div
-            className={`p-3 rounded-lg ${
-              isUser
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-secondary-foreground"
-            }`}
+        <div
+          className={`rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
+            isUser
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted/60 text-foreground border border-border/50"
+          } ${message.status === "error" ? "border-destructive/50 text-destructive" : ""}`}
+        >
+          {isUser ? (
+            message.text
+          ) : (
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <ReactMarkdown>{message.text}</ReactMarkdown>
+            </div>
+          )}
+        </div>
+        {!isUser && message.status !== "generating" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs self-start"
+            onClick={handleCopy}
           >
-            {message.text}
-          </div>
-        </div>
+            {copied ? <Check size={12} /> : <Copy size={12} />}
+            <span className="ml-1">{copied ? "Copied" : "Copy"}</span>
+          </Button>
+        )}
       </div>
     </div>
   );

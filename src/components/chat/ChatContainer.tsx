@@ -1,34 +1,33 @@
-
-import { ChatMessage as ChatMessageType } from "@/types";
-import { CHAT } from "@/constants/strings";
-import ChatMessage from "./ChatMessage";
 import { useEffect, useRef } from "react";
+import ChatMessage from "./ChatMessage";
+import { CHAT } from "@/constants/strings";
+import { ChatMessage as ChatMessageType } from "@/types";
 
 type ChatContainerProps = {
   messages: ChatMessageType[];
 };
 
 const ChatContainer = ({ messages }: ChatContainerProps) => {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  if (messages.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
+        {CHAT.EMPTY}
+      </div>
+    );
+  }
+
   return (
-    <div className="flex-1 overflow-y-auto p-4">
-      {messages.length === 0 ? (
-        <div className="h-full flex flex-col justify-center items-center text-muted-foreground">
-          <p>{CHAT.EMPTY}</p>
-        </div>
-      ) : (
-        <>
-          {messages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
-          ))}
-          <div ref={messagesEndRef} />
-        </>
-      )}
+    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin">
+      {messages.map((msg) => (
+        <ChatMessage key={msg.id} message={msg} />
+      ))}
+      <div ref={bottomRef} />
     </div>
   );
 };

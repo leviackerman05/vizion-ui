@@ -21,12 +21,16 @@ export function createUserMessage(text: string): ChatMessage {
   };
 }
 
-export function createAiMessage(text: string): ChatMessage {
+export function createAiMessage(
+  text: string,
+  status?: "generating" | "done" | "error"
+): ChatMessage {
   return {
     id: generateId(),
     sender: "ai",
     text,
     timestamp: new Date(),
+    status,
   };
 }
 

@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock } from "lucide-react";
-import { FaApple, FaGoogle, FaGithub } from "react-icons/fa";
+import { APP } from "@/constants/strings";
+import { getApiUrl } from "@/lib/api/config";
+import { consumeAuthRedirectMessage } from "@/lib/api/auth";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -13,131 +15,83 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const msg = consumeAuthRedirectMessage();
+    if (msg) {
+      setError(msg);
+      toast.error(msg);
+    }
+  }, []);
+
   const handleLogin = async () => {
     setLoading(true);
+    setError("");
     try {
-      const res = await fetch("http://localhost:8000/login", {
+      const res = await fetch(`${getApiUrl()}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-
       const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Invalid credentials");
 
-      if (!res.ok) {
-        setError("Invalid email or password");
-        toast(
-          <div className="flex flex-col">
-            <span className="font-medium">Login failed</span>
-            <span className="text-sm text-gray-700">
-              Please check your credentials
-            </span>
-          </div>,
-          {
-            style: { backgroundColor: "#eae4e2", color: "black" },
-          }
-        );
-        return;
-      }
-
-      localStorage.setItem("token", data.idToken);
-      localStorage.setItem("uid", data.uid);
-      localStorage.setItem("active_plan", data.active_plan ?? "");
-
+      localStorage.setItem("token", data.access_token);
+      localStorage.setItem("uid", data.user?.id ?? "");
+      localStorage.setItem("active_plan", data.active_plan ?? "free");
       navigate("/");
-    } catch {
-      setError("Something went wrong");
-      toast(
-        <div className="flex flex-col">
-          <span className="font-medium">Login failed</span>
-          <span className="text-sm text-gray-700">Please try again later.</span>
-        </div>,
-        {
-          style: { backgroundColor: "#eae4e2", color: "black" },
-        }
-      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+      toast.error("Login failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black text-white">
-      <div className="w-full max-w-md bg-[#111] rounded-xl p-8 shadow-2xl border border-white/10">
-        <div className="text-center">
-          <div className="mb-4">
-            <div className="mx-auto h-10 w-10 rounded-full bg-white/10 flex items-center justify-center">
-              <span className="text-sm font-bold">O</span>
-            </div>
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="w-full max-w-sm space-y-6 p-8">
+        <div className="text-center space-y-1">
+          <div className="mx-auto w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg mb-4">
+            V
           </div>
-          <h1 className="text-2xl font-semibold">Welcome</h1>
-          <p className="text-sm text-white/60 mt-1">
-            Don't have an account yet?{" "}
-            <a href="/signup" className="text-blue-500 hover:underline">
-              Sign up
-            </a>
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">Welcome to {APP.NAME}</h1>
+          <p className="text-sm text-muted-foreground">{APP.TAGLINE}</p>
         </div>
 
-        <div className="space-y-4 mt-6">
+        <div className="space-y-3">
           <div className="relative">
-            <Mail
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40"
-              size={16}
-            />
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
             <Input
               type="email"
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="pl-10 bg-white/10 border-none text-white placeholder-white/40"
+              className="pl-10"
             />
           </div>
           <div className="relative">
-            <Lock
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40"
-              size={16}
-            />
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
             <Input
               type="password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="pl-10 bg-white/10 border-none text-white placeholder-white/40"
+              className="pl-10"
+              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
             />
           </div>
-          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-          <Button
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white"
-            onClick={handleLogin}
-            disabled={loading}
-          >
-            {loading ? "Logging in..." : "Login"}
+          {error && <p className="text-destructive text-sm">{error}</p>}
+          <Button className="w-full" onClick={handleLogin} disabled={loading}>
+            {loading ? "Signing in..." : "Sign in"}
           </Button>
         </div>
 
-        <div className="text-center text-white/40 text-sm mt-4">OR</div>
-
-        <div className="grid grid-cols-3 gap-3 mt-4">
-          <Button
-            variant="outline"
-            className="bg-white/10 text-white border-white/10"
-          >
-            <FaApple size={16} />
-          </Button>
-          <Button
-            variant="outline"
-            className="bg-white/10 text-white border-white/10"
-          >
-            <FaGoogle size={16} />
-          </Button>
-          <Button
-            variant="outline"
-            className="bg-white/10 text-white border-white/10"
-          >
-            <FaGithub size={16} />
-          </Button>
-        </div>
+        <p className="text-center text-sm text-muted-foreground">
+          No account?{" "}
+          <a href="/signup" className="text-primary hover:underline">
+            Sign up
+          </a>
+        </p>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ export type ChatMessage = {
   sender: "user" | "ai";
   text: string;
   timestamp: Date;
+  status?: "generating" | "done" | "error";
 };
 
 export type ChatHistory = {
@@ -20,3 +21,10 @@ export type VideoMetadata = {
 };
 
 export type VideoState = "idle" | "generating" | "ready" | "error";
+
+export type UserPlan = "free" | "pro";
+
+export type GenerationStatus = {
+  stage: string;
+  message: string;
+};

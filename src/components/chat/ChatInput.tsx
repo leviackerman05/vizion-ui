@@ -1,49 +1,76 @@
-
-import { INPUT } from "@/constants/strings";
+import { useState, KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Send } from "lucide-react";
-import { useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import { INPUT } from "@/constants/strings";
+import { Send, Square } from "lucide-react";
 
 type ChatInputProps = {
-  onSendMessage: (message: string) => void;
-  expanded: boolean;
+  onSend: (text: string) => void;
+  onStop?: () => void;
+  disabled?: boolean;
+  isGenerating?: boolean;
+  centered?: boolean;
 };
 
-const ChatInput = ({ onSendMessage, expanded }: ChatInputProps) => {
-  const [message, setMessage] = useState("");
+const ChatInput = ({
+  onSend,
+  onStop,
+  disabled,
+  isGenerating,
+  centered,
+}: ChatInputProps) => {
+  const [text, setText] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (message.trim()) {
-      onSendMessage(message);
-      setMessage("");
+  const handleSend = () => {
+    const trimmed = text.trim();
+    if (!trimmed || disabled) return;
+    onSend(trimmed);
+    setText("");
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
   };
 
   return (
-    <form 
-      onSubmit={handleSubmit} 
-      className={`${
-        expanded ? "w-full p-4 border-t border-border" : "w-2/3 max-w-2xl"
-      } mx-auto transition-all duration-300`}
-    >
-      <div className={`rainbow-border flex items-center gap-2 rounded-lg p-1 bg-white transition-all duration-300 ${
-        expanded ? "" : "shadow-lg"
-      }`}>
-        <Input
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
+    <div className={`p-4 ${centered ? "max-w-2xl mx-auto w-full" : ""}`}>
+      <div className="relative flex gap-2 items-end rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm p-2 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+        <Textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder={INPUT.PLACEHOLDER}
-          className="border-0 flex-1 focus-visible:ring-0 focus-visible:ring-offset-0"
-          autoFocus
+          disabled={disabled}
+          rows={1}
+          className="flex-1 min-h-[44px] max-h-32 resize-none border-0 bg-transparent focus-visible:ring-0 shadow-none text-sm"
         />
-        <Button type="submit" size="sm" className="shrink-0">
-          <Send size={16} className="mr-2" />
-          {expanded ? INPUT.SEND : INPUT.SUBMIT}
-        </Button>
+        {isGenerating ? (
+          <Button
+            size="icon"
+            variant="destructive"
+            className="shrink-0 h-9 w-9"
+            onClick={onStop}
+          >
+            <Square size={14} />
+          </Button>
+        ) : (
+          <Button
+            size="icon"
+            className="shrink-0 h-9 w-9"
+            onClick={handleSend}
+            disabled={disabled || !text.trim()}
+          >
+            <Send size={16} />
+          </Button>
+        )}
       </div>
-    </form>
+      <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
+        Enter to send · Shift+Enter for new line
+      </p>
+    </div>
   );
 };
 

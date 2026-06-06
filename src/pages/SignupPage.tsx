@@ -4,115 +4,114 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock } from "lucide-react";
+import { APP } from "@/constants/strings";
+import { validateSignupEmail } from "@/utils/emailValidation";
+import { getApiUrl } from "@/lib/api/config";
+
+function parseApiError(data: unknown, fallback: string): string {
+  if (!data || typeof data !== "object") return fallback;
+  const record = data as Record<string, unknown>;
+  if (typeof record.detail === "string") return record.detail;
+  if (Array.isArray(record.detail) && record.detail.length > 0) {
+    const first = record.detail[0] as { msg?: string };
+    if (first.msg) return first.msg.replace(/^Value error,\s*/i, "");
+  }
+  return fallback;
+}
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSignup = async () => {
+    setError("");
+    const emailError = validateSignupEmail(email);
+    if (emailError) {
+      setError(emailError);
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
+    setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/signup", {
+      const res = await fetch(`${getApiUrl()}/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
-
       const result = await res.json();
-
       if (!res.ok) {
-        if (result.detail === "EMAIL_EXISTS") {
-          toast(
-            <div className="flex flex-col">
-              <span className="font-medium">Account already exists</span>
-              <span className="text-sm text-gray-700">
-                Try logging in instead.
-              </span>
-            </div>,
-            {
-              style: { backgroundColor: "#eae4e2", color: "black" },
-            }
-          );
-        } else {
-          toast(
-            <div className="flex flex-col">
-              <span className="font-medium">Signup failed</span>
-              <span className="text-sm text-gray-700">
-                Unexpected error occurred.
-              </span>
-            </div>,
-            {
-              style: { backgroundColor: "#eae4e2", color: "black" },
-            }
-          );
-        }
+        const message = parseApiError(result, "Signup failed");
+        setError(message);
+        toast.error(message);
         return;
       }
-
-      toast(
-        <div className="flex flex-col">
-          <span className="font-medium">Account created!</span>
-          <span className="text-sm text-gray-300">You can now log in.</span>
-        </div>,
-        {
-          style: { backgroundColor: "#16a34a", color: "white" },
-        }
-      );
-
+      toast.success("Account created! You can now sign in.");
       navigate("/login");
     } catch {
-      toast(
-        <div className="flex flex-col">
-          <span className="font-medium">Something went wrong</span>
-          <span className="text-sm text-gray-300">Please try again later.</span>
-        </div>,
-        {
-          style: { backgroundColor: "#b91c1c", color: "white" },
-        }
-      );
+      const message = "Cannot reach backend. Is the API running?";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black text-white">
-      <div className="w-full max-w-md bg-[#111] rounded-xl p-8 shadow-2xl border border-white/10">
-        <h1 className="text-2xl font-semibold text-center mb-4">
-          Create Account
-        </h1>
-        <div className="space-y-4">
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="w-full max-w-sm space-y-6 p-8">
+        <div className="text-center space-y-1">
+          <div className="mx-auto w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg mb-4">
+            V
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight">Create account</h1>
+          <p className="text-sm text-muted-foreground">Join {APP.NAME} — it's free</p>
+        </div>
+
+        <div className="space-y-3">
           <div className="relative">
-            <Mail
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40"
-              size={16}
-            />
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
             <Input
               type="email"
-              placeholder="Email address"
+              placeholder="you@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="pl-10 bg-white/10 border-none text-white placeholder-white/40"
+              className="pl-10"
+              onKeyDown={(e) => e.key === "Enter" && handleSignup()}
             />
           </div>
           <div className="relative">
-            <Lock
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40"
-              size={16}
-            />
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
             <Input
               type="password"
-              placeholder="Password"
+              placeholder="Password (min 6 characters)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="pl-10 bg-white/10 border-none text-white placeholder-white/40"
+              className="pl-10"
+              onKeyDown={(e) => e.key === "Enter" && handleSignup()}
             />
           </div>
-          <Button
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white"
-            onClick={handleSignup}
-          >
-            Sign Up
+          <p className="text-xs text-muted-foreground">
+            Supported: Gmail, Outlook, Yahoo, iCloud, Proton, and .edu school emails.
+          </p>
+          {error && <p className="text-destructive text-sm">{error}</p>}
+          <Button className="w-full" onClick={handleSignup} disabled={loading}>
+            {loading ? "Creating account..." : "Create account"}
           </Button>
         </div>
+
+        <p className="text-center text-sm text-muted-foreground">
+          Already have an account?{" "}
+          <a href="/login" className="text-primary hover:underline">
+            Sign in
+          </a>
+        </p>
       </div>
     </div>
   );

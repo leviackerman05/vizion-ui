@@ -1,45 +1,29 @@
-
+import { useNavigate } from "react-router-dom";
 import { HEADER } from "@/constants/strings";
 import { Button } from "@/components/ui/button";
-import { Settings } from "lucide-react";
+import { User } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { useState } from "react";
 import ExportModal from "@/components/modals/ExportModal";
 
 const Header = () => {
   const [exportModalOpen, setExportModalOpen] = useState(false);
-  
+  const navigate = useNavigate();
+
   return (
-    <header className="h-16 border-b border-border flex items-center justify-between px-6">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm">
-          {HEADER.NEW_PROJECT}
-        </Button>
-        
-        <Button variant="ghost" size="sm">
-          {HEADER.SAVE}
-        </Button>
-        
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => setExportModalOpen(true)}
-        >
-          {HEADER.EXPORT}
-        </Button>
-      </div>
-      
-      <div className="flex items-center gap-3">
+    <header className="h-12 border-b border-border/50 flex items-center justify-between px-4 bg-background/80 backdrop-blur-sm">
+      <Button variant="ghost" size="sm" onClick={() => setExportModalOpen(true)}>
+        {HEADER.EXPORT}
+      </Button>
+
+      <div className="flex items-center gap-1">
         <ThemeToggle />
-        <Button variant="ghost" size="icon">
-          <Settings size={18} />
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/profile")}>
+          <User size={16} />
         </Button>
       </div>
 
-      <ExportModal 
-        open={exportModalOpen}
-        onOpenChange={setExportModalOpen}
-      />
+      <ExportModal open={exportModalOpen} onOpenChange={setExportModalOpen} />
     </header>
   );
 };
